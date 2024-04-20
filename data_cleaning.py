@@ -176,14 +176,25 @@ selected_df['Company Name'] = label_encoder.fit_transform(selected_df['Company N
 # Print the updated DataFrame with the new label columns
 print(selected_df.head())
 
+
+# Count the number of missing values per row
+missing_values_count = selected_df.isna().sum(axis=1) 
+# Identify the rows with missing values
+rows_with_missing = missing_values_count[missing_values_count > 0]
+
+# Drop rows with missing values
+selected_df = selected_df.dropna(how='any')
+
+print(f"Number of rows with missing values: {len(rows_with_missing)}")
+
 # Save the final DataFrame to a CSV file
 selected_df.to_csv('final_version.csv', index=False)
 
 # Print the data types of the columns
-print(selected_df.dtypes)
+# print(selected_df.dtypes)
 
-# Print the shape of the DataFrame
+# # Print the shape of the DataFrame
 print(selected_df.shape)
 
-# Print the column names of the DataFrame
-print(selected_df.columns)
+# # Print the column names of the DataFrame
+# print(selected_df.columns)
