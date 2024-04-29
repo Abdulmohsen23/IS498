@@ -6,7 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.feature_selection import SelectKBest, f_regression
 
 # Read the CSV file
-df = pd.read_csv(r'C:\Users\osama\Documents\IS498-ML\Equites_Historical_Adjusted_Prices_Report.csv', index_col=False)
+df = pd.read_csv(r'C:\Users\osama\Documents\IS498-ML\data\Equites_Historical_Adjusted_Prices_Report.csv', index_col=False)
 
 # Fill missing values with NaN
 df.fillna(np.nan, inplace=True)
@@ -170,7 +170,7 @@ selected_df[label_columns] = selected_df[label_columns].astype(int)
 label_encoder = LabelEncoder()
 
 # Encode the categorical features
-selected_df['Industry Group'] = label_encoder.fit_transform(selected_df['Industry Group'])
+# selected_df['Industry Group'] = label_encoder.fit_transform(selected_df['Industry Group'])
 selected_df['Company Name'] = label_encoder.fit_transform(selected_df['Company Name'])
 
 # Print the updated DataFrame with the new label columns
