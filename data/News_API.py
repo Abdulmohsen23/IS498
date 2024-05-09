@@ -21,7 +21,7 @@ def fetch_stock_news(api_token, symbols, published_after, filename):
 # Replace 'YOUR_API_TOKEN' with your actual API token
 api_token = 'exUBYXyWyKyzEmeuLf7Sg1GpXhEmJBtX4bETpLcb'
 symbols = ['8200.SR', '1150.SR', '2350.SR', '4040.SR', '4170.SR', '4015.SR', '4270.SR', '7030.SR', '4070.SR', '6010.SR', '4110.SR', '2230.SR', '4061.SR', '4300.SR', '4190.SR', '2380.SR', '1040.SR', '4180.SR', '4130.SR', '5110.SR', '4331.SR', '7201.SR']
-published_after = '2011-04-04T00:00'  # Specify the desired date and time
+published_after = '2010-04-04T00:00'  # Specify the desired date and time
 output_filename = 'stock_news.json'  # Specify the filename to write the data to
 
 fetch_stock_news(api_token, symbols, published_after, output_filename)

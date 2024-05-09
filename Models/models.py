@@ -5,14 +5,15 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pyplot as plt
 
-
-selected_df= pd.read_csv(r'C:\Users\osama\Documents\IS498-ML\final_version.csv', index_col=False)
+selected_df = pd.read_csv(r'C:\Users\osama\Documents\IS498-ML\final_version.csv', index_col=False)
 
 print(selected_df.head(10))
 # Assuming your data is stored in a DataFrame called 'selected_df'
 # with all the features you mentioned
-
+stock_symbol = 4040
+selected_df = selected_df[selected_df['Symbol'] == stock_symbol]
 # Prepare the data for linear regression
 X_price = selected_df[['Open', 'High', 'Low', 'Close', 'Change', '% Change', 'Volume Traded',
                        'Value Traded (SAR)', 'No. of Trades', 'Day', 'Month', 'Year',
@@ -23,8 +24,7 @@ X_price = selected_df[['Open', 'High', 'Low', 'Close', 'Change', '% Change', 'Vo
 y_price = selected_df['Close']  # Target variable for price prediction
 
 # Split the data into training and testing sets for linear regression
-# Split the data into training and testing sets for linear regression
-X_price_train, X_price_test, y_price_train, y_price_test = train_test_split(X_price, y_price, test_size=0.2, random_state=42)
+X_price_train, X_price_test, y_price_train, y_price_test = train_test_split(X_price, y_price, test_size=0.2, random_state=42, shuffle=True)
 
 # Create and train the linear regression model
 price_model = LinearRegression()
@@ -49,6 +49,50 @@ price_predictions = price_predictions.flatten()
 
 # Add the predictions as a column
 selected_df['Predicted_Price'] = price_predictions 
+
+# Generate buy and sell signals based on the trend of the next three predicted prices
+selected_df['Signal'] = 0
+selected_df['Next_3_Prices'] = selected_df['Predicted_Price'].shift(-3).rolling(window=3).mean()
+
+# Set the signal threshold
+signal_threshold = 0.0  # Adjust this value based on your requirements
+
+# Set the maximum number of shares to hold
+max_shares = 1000
+
+# Initialize the current position
+current_position = 0
+
+# Set the consecutive signal requirement
+consecutive_signals = 1# Adjust this value based on your requirements
+
+# Calculate the consecutive buy and sell conditions
+selected_df['Consecutive_Buy'] = (selected_df['Close'] < selected_df['Predicted_Price']) & (selected_df['RSI'] < 30) & (selected_df['Next_3_Prices'].shift(1) > selected_df['Predicted_Price']).rolling(consecutive_signals).sum() >= consecutive_signals
+selected_df['Consecutive_Sell'] = (selected_df['Close'] > selected_df['Predicted_Price']) & (selected_df['RSI'] > 70) & (selected_df['Next_3_Prices'].shift(1) < selected_df['Predicted_Price']).rolling(consecutive_signals).sum() >= consecutive_signals
+
+for index, row in selected_df.iterrows():
+    if (row['Consecutive_Buy']) & (current_position < max_shares):
+        selected_df.at[index, 'Signal'] = 1  # Buy signal
+        current_position += 1  # Increase the current position
+    elif (row['Consecutive_Sell']) & (current_position > 0):
+        selected_df.at[index, 'Signal'] = -1  # Sell signal
+        current_position -= 1  # Decrease the current position
+# Select a specific stock symbol for backtesting
+stock_symbol = 4040
+stock_data = selected_df[selected_df['Symbol'] == stock_symbol]
+print(selected_df[['Close', 'Predicted_Price', 'Consecutive_Buy', 'Consecutive_Sell']].head(10))
+
+# Plot the stock chart with buy and sell signals
+plt.figure(figsize=(12, 6))
+plt.plot(stock_data.index, stock_data['Close'], label='Close Price')
+plt.scatter(stock_data[stock_data['Signal'] == 1].index, stock_data[stock_data['Signal'] == 1]['Close'], color='green', label='Buy Signal', marker='^', alpha=1)
+plt.scatter(stock_data[stock_data['Signal'] == -1].index, stock_data[stock_data['Signal'] == -1]['Close'], color='red', label='Sell Signal', marker='v', alpha=1)
+plt.title(f'Stock {stock_symbol} - Close Price with Buy/Sell Signals')
+plt.xlabel('Date')
+plt.ylabel('Close Price')
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.show()
 
 
 
