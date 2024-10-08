@@ -5,31 +5,54 @@ from sklearn.model_selection import train_test_split
 from keras.models import Sequential
 from keras.layers import Dense, LSTM
 import matplotlib.pyplot as plt
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, mean_absolute_error, explained_variance_score
 
 # Read the CSV file
 df = pd.read_csv(r'C:\Users\osama\Documents\IS498-ML\final_version.csv', index_col=False)
+
+# Select a specific stock
+selected_stock = 1150 # Replace with the desired stock symbol
+selected_df = df[df['Symbol'] == selected_stock]
+
+# Get the company name for the selected stock
+company_name = selected_df['Company Name'].iloc[0]
 
 # Define the feature columns
 feature_columns = ["% Change" ,'RollingMean', 'MACD', 'RSI']
 
 # Create a new DataFrame with only the feature columns and the 'Close' column
-data = df[feature_columns + ['Close']]
+data = selected_df[feature_columns + ['Close']]
 
 # Create a DatetimeIndex using the 'Year', 'Month', and 'Day' columns
-data.index = pd.to_datetime(df[['Year', 'Month', 'Day']])
+data.index = pd.to_datetime(selected_df[['Year', 'Month', 'Day']])
 
 # Scale the data
 scaler = MinMaxScaler(feature_range=(0, 1))
 scaled_data = scaler.fit_transform(data)
 
+# Split the data into training and testing sets
+train_data = scaled_data[:int(len(scaled_data) * 0.8)]
+test_data = scaled_data[int(len(scaled_data) * 0.8):]
+
 # Prepare the training data
 x_train = []
 y_train = []
-for i in range(100, len(scaled_data)):
-    x_train.append(scaled_data[i - 100:i, :-1])
-    y_train.append(scaled_data[i, -1])
+for i in range(100, len(train_data)):
+    x_train.append(train_data[i - 100:i, :-1])
+    y_train.append(train_data[i, -1])
 x_train, y_train = np.array(x_train), np.array(y_train)
+
+# Prepare the testing data
+x_test = []
+y_test = []
+for i in range(100, len(test_data)):
+    x_test.append(test_data[i - 100:i, :-1])
+    y_test.append(test_data[i, -1])
+x_test, y_test = np.array(x_test), np.array(y_test)
+
+# Reshape the input data
+x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], x_train.shape[2]))
+x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], x_test.shape[2]))
 
 # Build the LSTM model
 model = Sequential()
@@ -42,48 +65,24 @@ model.add(Dense(1))
 model.compile(optimizer='adam', loss='mean_squared_error')
 
 # Train the model
-model.fit(x_train, y_train, batch_size=64, epochs=8)
+model.fit(x_train, y_train, batch_size=4, epochs=10)
 
-# Select a specific stock for backtesting
-selected_stock = 8200  # Replace with the desired stock symbol
-selected_df = df[df['Symbol'] == selected_stock]
+# Make predictions
+predictions = model.predict(x_test)
 
-# Create a new DataFrame with only the feature columns and the 'Close' column for the selected stock
-backtest_data = selected_df[feature_columns + ['Close']]
+# Inverse transform the predictions and actual values
+inv_predictions = scaler.inverse_transform(np.concatenate((x_test[:, -1, :], predictions), axis=1))[:, -1]
+inv_y_test = scaler.inverse_transform(np.concatenate((x_test[:, -1, :], y_test.reshape(-1, 1)), axis=1))[:, -1]
 
-# Create a DatetimeIndex using the 'Year', 'Month', and 'Day' columns for the selected stock
-backtest_data.index = pd.to_datetime(selected_df[['Year', 'Month', 'Day']])
-
-# Scale the backtest data
-backtest_scaled_data = scaler.transform(backtest_data)
-
-# Prepare the backtesting data
-x_backtest = []
-y_backtest = []
-for i in range(100, len(backtest_scaled_data)):
-    x_backtest.append(backtest_scaled_data[i - 100:i, :-1])
-    y_backtest.append(backtest_scaled_data[i, -1])
-x_backtest, y_backtest = np.array(x_backtest), np.array(y_backtest)
-
-# Reshape the input data for backtesting
-x_backtest = np.reshape(x_backtest, (x_backtest.shape[0], x_backtest.shape[1], x_backtest.shape[2]))
-
-# Make predictions on the backtesting data
-backtest_predictions = model.predict(x_backtest)
-
-# Inverse transform the predictions and actual values for backtesting
-inv_backtest_predictions = scaler.inverse_transform(np.concatenate((x_backtest[:, -1, :], backtest_predictions), axis=1))[:, -1]
-inv_y_backtest = scaler.inverse_transform(np.concatenate((x_backtest[:, -1, :], y_backtest.reshape(-1, 1)), axis=1))[:, -1]
-
-# Calculate accuracy for backtesting
-threshold = 0.05  # Define the threshold for accuracy (e.g., 5%)
-accurate_predictions = np.sum(np.abs(inv_backtest_predictions - inv_y_backtest) / inv_y_backtest <= threshold)
-accuracy = accurate_predictions / len(inv_y_backtest) * 100
+# Calculate accuracy
+threshold = 0.02  # Define the threshold for accuracy (e.g., 5%)
+accurate_predictions = np.sum(np.abs(inv_predictions - inv_y_test) / inv_y_test <= threshold)
+Accuracy = accurate_predictions / len(inv_y_test) * 100
 
 # Create a DataFrame for signals
-signals_df = pd.DataFrame(index=backtest_data.index[-len(inv_y_backtest):])
-signals_df['Close'] = inv_y_backtest
-signals_df['Predicted'] = inv_backtest_predictions
+signals_df = pd.DataFrame(index=data.index[-len(inv_y_test):])
+signals_df['Close'] = inv_y_test
+signals_df['Predicted'] = inv_predictions
 signals_df['Signal'] = 0
 
 # Initialize the portfolio with a starting value of 3000
@@ -125,6 +124,7 @@ for i in range(len(signals_df)):
         num_trades += 1
         print(f"Trade {num_trades}: Stop loss triggered. Sold {shares} shares at {sell_price:.2f}. Portfolio value: {portfolio_value:.2f}")
 
+
 # Calculate the percentage of profit
 initial_portfolio_value = 3000
 percentage_profit = (portfolio_value - initial_portfolio_value) / initial_portfolio_value * 100
@@ -138,16 +138,17 @@ plt.scatter(buy_signals.index, buy_signals['Close'], color='green', label='Buy S
 plt.scatter(sell_signals.index, sell_signals['Close'], color='red', label='Sell Signal', marker='v', alpha=1)
 plt.xlabel('Date')
 plt.ylabel('Close Price')
+plt.title(f'Price Curve and Signals for {company_name}')  # Add company name as the title
 plt.legend()
 plt.show()
 
 # Create a DataFrame for plotting
 plotting_data = pd.DataFrame(
     {
-        'Original Close Price': inv_y_backtest,
-        'Predicted Close Price': inv_backtest_predictions
+        'Original Close Price': inv_y_test,
+        'Predicted Close Price': inv_predictions
     },
-    index=backtest_data.index[-len(inv_y_backtest):]
+    index=data.index[-len(inv_y_test):]
 )
 
 # Plot the original close price and predicted close price
@@ -156,16 +157,25 @@ plt.plot(plotting_data['Original Close Price'], label='Original Close Price')
 plt.plot(plotting_data['Predicted Close Price'], label='Predicted Close Price')
 plt.xlabel('Date')
 plt.ylabel('Close Price')
+plt.title(f'Original vs. Predicted Close Price for {company_name}')  # Add company name as the title
 plt.legend()
 plt.show()
 
 # Calculate the accuracy and other performance measurements
-mse = mean_squared_error(inv_y_backtest, inv_backtest_predictions)
-r2 = r2_score(inv_y_backtest, inv_backtest_predictions)
+mse = mean_squared_error(inv_y_test, inv_predictions)
+mae = mean_absolute_error(inv_y_test, inv_predictions)
+r2 = r2_score(inv_y_test, inv_predictions)
+evs = explained_variance_score(inv_y_test, inv_predictions)
+
+# Calculate accuracy using accuracy_score
+accuracy = accuracy_score(np.round(inv_y_test), np.round(inv_predictions)) * 100
 
 print(f"Number of trades: {num_trades}")
 print(f"Final portfolio value: {portfolio_value:.2f}")
 print(f"Percentage profit: {percentage_profit:.2f}%")
-print(f"Mean Squared Error: {mse:.4f}")
-print(f"R-squared: {r2:.4f}")
-print(f"Accuracy: {accuracy:.2f}%")
+print(f"Mean Squared Error (MSE): {mse:.4f}")
+print(f"Mean Absolute Error (MAE): {mae:.4f}")
+print(f"R-squared (R2): {r2:.4f}")
+print(f"Explained Variance Score (EVS): {evs:.4f}")
+print(f"Accuracy: {accuracy:.2f}%") 
+print(f"Accuracy: {Accuracy:.2f}%")

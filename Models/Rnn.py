@@ -10,12 +10,17 @@ from sklearn.metrics import mean_squared_error, r2_score
 # Read the CSV file
 df = pd.read_csv(r'C:\Users\osama\Documents\IS498-ML\final_version.csv', index_col=False)
 
+
+
 # Select a specific stock
-selected_stock = 4130  # Replace with the desired stock symbol
+selected_stock = 5110  # Replace with the desired stock symbol
 selected_df = df[df['Symbol'] == selected_stock]
 
+company_name = selected_df['Company Name'].iloc[0]
+
+
 # Define the feature columns
-feature_columns = ['Open', 'High', 'Low','RollingMean', 'MACD', 'RSI','RollingStd']
+feature_columns = ['% Change','RollingMean', 'MACD', 'RSI']
 
 # Create a new DataFrame with only the feature columns and the 'Close' column
 data = selected_df[feature_columns + ['Close']]
@@ -37,6 +42,8 @@ y_train = []
 for i in range(100, len(train_data)):
     x_train.append(train_data[i - 100:i, :-1])
     y_train.append(train_data[i, -1])
+    print(y_train)
+    print(x_train)
 x_train, y_train = np.array(x_train), np.array(y_train)
 
 # Prepare the testing data
@@ -62,7 +69,7 @@ model.add(Dense(1))
 model.compile(optimizer='adam', loss='mean_squared_error')
 
 # Train the model
-model.fit(x_train, y_train, batch_size=16, epochs=10)
+model.fit(x_train, y_train, batch_size=4, epochs=10)
 
 # Make predictions
 predictions = model.predict(x_test)
@@ -72,7 +79,7 @@ inv_predictions = scaler.inverse_transform(np.concatenate((x_test[:, -1, :], pre
 inv_y_test = scaler.inverse_transform(np.concatenate((x_test[:, -1, :], y_test.reshape(-1, 1)), axis=1))[:, -1]
 
 # Calculate accuracy
-threshold = 0.05  # Define the threshold for accuracy (e.g., 5%)
+threshold = 0.03  # Define the threshold for accuracy (e.g., 5%)
 accurate_predictions = np.sum(np.abs(inv_predictions - inv_y_test) / inv_y_test <= threshold)
 accuracy = accurate_predictions / len(inv_y_test) * 100
 
@@ -154,6 +161,7 @@ plt.plot(plotting_data['Original Close Price'], label='Original Close Price')
 plt.plot(plotting_data['Predicted Close Price'], label='Predicted Close Price')
 plt.xlabel('Date')
 plt.ylabel('Close Price')
+plt.title(f'Original vs. Predicted Close Price for {company_name}')  # Add company name as the title
 plt.legend()
 plt.show()
 

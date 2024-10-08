@@ -97,19 +97,7 @@ selected_features = selector.get_support(indices=True)
 selected_feature_names = [feature_columns[i] for i in selected_features]
 print("Selected Features:", selected_feature_names)
 
-# Define the time steps for each strategy and risk level
-strategies = {
-    'Long_High_Risk': 90,
-    'Long_Middle_Risk': 180,
-    'Long_Low_Risk': 365,
-    'Short_High_Risk': 5,
-    'Short_Middle_Risk': 10,
-    'Short_Low_Risk': 30
-}
 
-# Create columns for each strategy and risk level
-for strategy in strategies:
-    selected_df[strategy] = 0
 
 # Assign labels for each strategy and risk level
 for company in selected_df['Symbol'].unique():
@@ -118,9 +106,7 @@ for company in selected_df['Symbol'].unique():
     for strategy, time_step in strategies.items():
         selected_df.loc[company_df.index, strategy] = (company_df['Close'].shift(-time_step) > company_df['Close']).astype(int)
 
-# Encode categorical features
-label_encoder = LabelEncoder()
-selected_df[['Industry Group', 'Company Name']] = selected_df[['Industry Group', 'Company Name']].apply(label_encoder.fit_transform)
+
 
 # Drop rows with missing values
 selected_df.dropna(inplace=True)

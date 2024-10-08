@@ -9,11 +9,14 @@ from sklearn.metrics import mean_squared_error, r2_score
 df = pd.read_csv(r'C:\Users\osama\Documents\IS498-ML\final_version.csv', index_col=False)
 
 # Select a specific stock
-selected_stock = 8200 # Replace with the desired stock symbol
+selected_stock = 5110 # Replace with the desired stock symbol
 selected_df = df[df['Symbol'] == selected_stock]
 
+company_name = selected_df['Company Name'].iloc[0]
+
+
 # Define the feature columns
-feature_columns = ["% Change" ,'RollingMean', 'MACD', 'RSI']
+feature_columns = ['RollingMean', 'MACD', 'RSI']
 
 # Create a new DataFrame with only the feature columns and the 'Close' column
 data = selected_df[feature_columns + ['Close']]
@@ -38,7 +41,7 @@ x_test = test_data[:-1, :-1]
 y_test = test_data[1:, -1]
 
 # Build the Random Forest model
-model = RandomForestRegressor(n_estimators=150, random_state=42)
+model = RandomForestRegressor(n_estimators=200, random_state=40)
 
 # Train the model
 model.fit(x_train, y_train)
@@ -133,6 +136,7 @@ plt.plot(plotting_data['Original Close Price'], label='Original Close Price')
 plt.plot(plotting_data['Predicted Close Price'], label='Predicted Close Price')
 plt.xlabel('Date')
 plt.ylabel('Close Price')
+plt.title(f'Original vs. Predicted Close Price for {company_name}')  # Add company name as the title
 plt.legend()
 plt.show()
 
